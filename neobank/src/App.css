@@ -1,73 +1,64 @@
+/* Sayfa arka planı: içerik kısa olsa bile tüm ekranı doldurur */
+html {
+  min-height: 100%;
+  background: #b8c6e4;
+}
+
+body {
+  min-height: 100svh;
+  margin: 0;
+  background: linear-gradient(135deg, #f0f4ef, #b8c6e4) fixed;
+}
+
 #root {
   width: 100%;
-  height: 100%;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-family: "Roboto", serif;
-  background: linear-gradient(135deg, #f0f4ef, #b8c6e4);
+  font-family: "Roboto", system-ui, sans-serif;
 }
 
-.simple-content {
-  @apply w-full rounded-xl text-white;
-  background: linear-gradient(
-    135deg,
-    #2396a8,
-    #2575fc
-  ); /* Mavi-yeşil degrade */
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Hafif gölge */
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+/* Sayfanın ana bloğu boşluğu doldurur, Footer hep en alta iner */
+#root > div:first-child {
+  flex: 1 0 auto;
 }
 
-.simple-input {
-  @apply w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black;
+/* Hesaplama sayfalarının ortak grid'i */
+.calc-grid {
+  @apply w-[92%] max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 my-4 items-start;
 }
 
-.compound-content {
-  @apply w-full rounded-xl text-white;
-  background: linear-gradient(
-    135deg,
-    #1c5d8b,
-    #2575fc
-  ); /* Koyu turkuaz degrade */
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Hafif gölge */
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.compound-input {
-  @apply w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black;
-}
-
-.credit-content {
-  @apply w-full h-full rounded-xl text-white;
-  background: linear-gradient(135deg, #174a64, #2575fc); /* Koyu mavi degrade */
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Hafif gölge */
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.credit-input {
-  @apply w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black;
-}
-
-.decreasing {
-  @apply w-full lg:h-[60vh] grid items-center justify-center grid-cols-3 lg:grid-rows-12 lg:grid-flow-col lg:gap-x-5 gap-y-2 lg:gap-y-0;
-}
-
+/* Ortak kart stili */
+.simple-content,
+.compound-content,
+.credit-content,
 .share-content {
-  @apply w-full rounded-xl text-white;
-  background: linear-gradient(135deg, #4c5fa4, #2575fc); /* Menekşe degrade */
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Hafif gölge */
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  @apply w-full rounded-xl text-white p-4 sm:p-6 border border-white/20 shadow-lg;
 }
 
-.share-input {
-  @apply w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black;
+.simple-content   { background: linear-gradient(135deg, #2396a8, #2575fc); }
+.compound-content { background: linear-gradient(135deg, #1c5d8b, #2575fc); }
+.credit-content   { background: linear-gradient(135deg, #174a64, #2575fc); }
+.share-content    { background: linear-gradient(135deg, #4c5fa4, #2575fc); }
+
+/* Form elemanları */
+.calc-input {
+  @apply w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-4 focus:ring-white/60;
 }
 
-/* Compound Raio Button */
+.field-error {
+  @apply text-sm text-red-100 bg-red-900/40 rounded px-2 py-0.5;
+}
 
-/* Compound Raio Button */
+.btn-primary {
+  @apply bg-white text-blue-700 font-medium px-5 py-2 rounded-md hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-white/20 text-white px-5 py-2 rounded-md border border-white/40 hover:bg-white/30 transition;
+}
+
+.result-box {
+  @apply w-full max-w-md rounded-lg bg-white/15 p-4 text-center space-y-1;
+}

@@ -1,22 +1,33 @@
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { Header } from "../Layers/Header";
 import { Footer } from "../Layers/Footer";
-import { useForm } from "react-hook-form";
-import React, { useState } from "react";
+import { Field } from "../Layers/Field";
+import {
+  annuityPayment,
+  decliningSchedule,
+  formatNumber,
+  formatTL,
+  type ScheduleRow,
+} from "../utils/finance";
+import { numberRules } from "../utils/rules";
 
-type Inputs = {
-  money: number;
-  rate: number;
-  time: number;
-  type: string;
-};
+type Inputs = { money: number; rate: number; time: number };
+type Kind = "sabit" | "azalan";
+
+type Result =
+  | { kind: "sabit"; payment: number; totalPayment: number; totalInterest: number }
+  | { kind: "azalan"; rows: ScheduleRow[]; totalPayment: number; totalInterest: number };
 
 export const Credit = () => {
   const navigate = useNavigate();
-
   const onClick = (url: string): void => {
-    navigate(url);
+  void navigate(url);
   };
+
+  const [kind, setKind] = useState<Kind>("sabit");
+  const [result, setResult] = useState<Result | null>(null);
 
   const {
     register,
@@ -25,210 +36,206 @@ export const Credit = () => {
     formState: { errors },
   } = useForm<Inputs>();
 
-  const [type, setType] = useState<string | null>();
-  const [result, setResult] = useState<number | null>();
-  const [odemePlani, setOdemePlani] = useState<Record<string, number>>({});
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setType(event.target.value);
+  const hesapla = ({ money, rate, time }: Inputs): void => {
+    if (kind === "sabit") {
+      const payment = annuityPayment(money, rate, time);
+      const totalPayment = payment * time;
+      setResult({ kind, payment, totalPayment, totalInterest: totalPayment - money });
+    } else {
+      const rows = decliningSchedule(money, rate, time);
+      const totalPayment = rows.reduce((sum, r) => sum + r.payment, 0);
+      setResult({ kind, rows, totalPayment, totalInterest: totalPayment - money });
+    }
   };
 
-  const hesapla = (data: Inputs): void => {
-    if (type == "azalan") {
-      let kalanOdeme = data.money;
-      const anaParaTaksidi = data.money / data.time;
-      const yeniOdemePlani: Record<string, number> = {};
-
-      for (let ay = 1; ay <= data.time; ay++) {
-        const faiz = kalanOdeme * data.rate;
-        const toplamTaksit = faiz + anaParaTaksidi;
-
-        yeniOdemePlani[`${ay}. Ay`] = parseFloat(
-          Number(toplamTaksit).toFixed(2)
-        );
-        kalanOdeme -= anaParaTaksidi;
-      }
-
-      setOdemePlani(yeniOdemePlani);
-    } else if (type == "sabit") {
-      const A = data.money;
-      const FO = data.rate;
-      const r = data.time;
-
-      const aylik =
-        (A * FO * Math.pow(1 + FO, r)) / (Math.pow(1 + FO, r) - 1);
-      setResult(aylik);
-    }
+  const changeKind = (k: Kind): void => {
+    setKind(k);
+    setResult(null);
   };
 
   const sifirla = (): void => {
     reset();
-    setType(null);
-    setOdemePlani({});
     setResult(null);
+    setKind("sabit");
   };
 
   return (
     <>
-      <div className="w-full h-full flex flex-col items-center">
+      <div className="w-full flex flex-col items-center">
         <Header onClick={onClick} />
-        <div className="w-4/5 h-3/5 grid lg:grid-cols-2 grid-cols-1 gap-6">
-          <div className="credit-content flex flex-col items-center justify-center py-7">
+        <div className="calc-grid">
+          <div className="credit-content flex flex-col items-center gap-6">
             <form
-              className="flex flex-col gap-4 w-3/5 items-center justify-center"
+              className="flex flex-col gap-4 w-full max-w-md"
               onSubmit={handleSubmit(hesapla)}
+              noValidate
             >
-              <div className="flex flex-col items-center gap-2">
-                <p className="font-medium text-lg">Faiz tipi seçiniz:</p>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="sabit"
-                    checked={type === "sabit"}
-                    onChange={handleChange}
-                    className="accent-blue-500"
-                  />
-                  <span>Sabit Faiz</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="azalan"
-                    checked={type === "azalan"}
-                    onChange={handleChange}
-                    className="accent-blue-500"
-                  />
-                  <span>Azalan Faiz</span>
-                </label>
-                <p className="text-sm text-white">
-                  {type == null
-                    ? "Lütfen faiz tipi seçiniz!"
-                    : type == "sabit"
-                    ? "Sabit faiz hesabı"
-                    : "Azalan faiz hesabı"}
-                </p>
-              </div>
+              <fieldset className="flex flex-col items-center gap-2">
+                <legend className="mb-1 font-medium text-lg">Faiz tipi seçiniz:</legend>
+                <div className="flex gap-6">
+                  {(
+                    [
+                      ["sabit", "Sabit Faiz"],
+                      ["azalan", "Azalan Faiz"],
+                    ] as const
+                  ).map(([value, text]) => (
+                    <label key={value} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="kind"
+                        value={value}
+                        checked={kind === value}
+                        onChange={() => changeKind(value)}
+                        className="accent-white"
+                      />
+                      <span>{text}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
-              <label htmlFor="money" className="w-full">
+              <Field label="Kredi Tutarı (₺)" htmlFor="money" error={errors.money?.message}>
                 <input
                   id="money"
                   type="number"
-                  className="credit-input"
-                  placeholder="Kredi miktarı"
-                  {...register("money", { required: "Bu alan gereklidir!" })}
+                  step="any"
+                  inputMode="decimal"
+                  className="calc-input"
+                  placeholder="Örn: 10000"
+                  {...register("money", numberRules(0.01))}
                 />
-              </label>
-              {errors.money && (
-                <span className="text-white text-sm">
-                  {errors.money.message}
-                </span>
-              )}
+              </Field>
 
-              <label htmlFor="rate" className="w-full">
+              <Field label="Aylık Faiz Oranı (%)" htmlFor="rate" error={errors.rate?.message}>
                 <input
                   id="rate"
                   type="number"
-                  className="credit-input"
-                  step="0.0001"
-                  placeholder="Faiz oranı"
-                  {...register("rate", { required: "Bu alan gereklidir!" })}
+                  step="any"
+                  inputMode="decimal"
+                  className="calc-input"
+                  placeholder="Örn: 1.5"
+                  {...register("rate", numberRules(0))}
                 />
-              </label>
-              {errors.rate && (
-                <span className="text-red-500 text-sm">
-                  {errors.rate.message}
-                </span>
-              )}
+              </Field>
 
-              <label htmlFor="time" className="w-full">
+              <Field label="Vade (Ay)" htmlFor="time" error={errors.time?.message}>
                 <input
                   id="time"
                   type="number"
-                  className="credit-input"
-                  placeholder="Vade süresi (ay)"
-                  {...register("time", { required: "Bu alan gereklidir!" })}
+                  step="1"
+                  inputMode="numeric"
+                  className="calc-input"
+                  placeholder="Örn: 12"
+                  {...register("time", {
+                    ...numberRules(1),
+                    validate: (v) => Number.isInteger(v) || "Tam sayı giriniz!",
+                  })}
                 />
-              </label>
-              {errors.time && (
-                <span className="text-red-500 text-sm">
-                  {errors.time.message}
-                </span>
-              )}
+              </Field>
 
               <div className="flex w-full justify-between">
-                <button
-                  className="bg-blue-500 text-white px-2 lg:px-4 py-2 rounded-md hover:bg-blue-600 transition"
-                  type="submit"
-                >
-                  Hesapla
-                </button>
-                <button
-                  className="bg-gray-500 text-white px-2 lg:px-4 py-2 rounded-md hover:bg-gray-600 transition"
-                  type="button"
-                  onClick={sifirla}
-                >
-                  Sıfırla
-                </button>
+                <button className="btn-primary" type="submit">Hesapla</button>
+                <button className="btn-secondary" type="button" onClick={sifirla}>Sıfırla</button>
               </div>
             </form>
-            <div className={type != "azalan" ? "mt-6 text-center" : Object.keys(odemePlani).length > 0 ? "grid grid-rows-12 grid-flow-col mt-6 text-center gap-x-4 gap-y-2" : "mt-6 text-center"}>
-              {type == null ? (
-                <p>İlk olarak faiz tipi seçiniz</p>
-              ) : type == "sabit" ? (
-                <p>
-                  <strong>Aylık ödemeniz gereken tutar:</strong> {result == null ? "Henüz işlem yapılmadı!" : `${result?.toFixed(2)} ₺`}
-                </p>
+
+            <div className="result-box" aria-live="polite">
+              {!result ? (
+                <p>Henüz işlem yapılmadı!</p>
               ) : (
-                Object.entries(odemePlani).map(([key, value]) => (
-                  <div key={key} className="text-sm text-white">
-                    {`${key}: ${value} ₺`}
-                  </div>
-                ))
+                <>
+                  {result.kind === "sabit" && (
+                    <p>Aylık Taksit: <strong>{formatTL(result.payment)}</strong></p>
+                  )}
+                  <p>Toplam Geri Ödeme: <strong>{formatTL(result.totalPayment)}</strong></p>
+                  <p>Toplam Faiz: <strong>{formatTL(result.totalInterest)}</strong></p>
+                </>
               )}
             </div>
+
+            {result?.kind === "azalan" && (
+              <div className="w-full max-h-80 overflow-auto rounded-lg bg-white/10">
+                <table className="w-full text-sm text-right">
+                  <thead className="sticky top-0 bg-blue-950">
+                    <tr>
+                      <th className="p-2 text-left">Ay</th>
+                      <th className="p-2">Taksit</th>
+                      <th className="p-2">Faiz</th>
+                      <th className="p-2">Anapara</th>
+                      <th className="p-2">Kalan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.rows.map((r) => (
+                      <tr key={r.month} className="border-t border-white/10">
+                        <td className="p-2 text-left">{r.month}</td>
+                        <td className="p-2">{formatNumber(r.payment)}</td>
+                        <td className="p-2">{formatNumber(r.interest)}</td>
+                        <td className="p-2">{formatNumber(r.principal)}</td>
+                        <td className="p-2">{formatNumber(r.balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-          <div className="credit-content p-10">
-                        <h2 className="text-2xl">Kredi Hesaplama Nedir?</h2>
-                        <p className="pl-3">Kredi hesaplama, alınan kredinin faiz oranı ve geri ödeme süresine göre aylık taksitlerin belirlenmesidir. İki temel yöntem kullanılır:</p><br/>
-                        <h3 className="text-xl">1. Sabit (Eşit) Taksitli Kredi</h3>
-                        <p>Her ay eşit miktarda ödeme yapılır.</p><br/>
-                        <h4 className="text-xl">Formül:</h4>
-                        <div className="flex justify-center items-center py-7">
-                            <p>Taksit =</p>
-                            <div className="flex flex-col justify-center items-center pl-1">
-                                <p className="border-b-2">A x FO x ( 1 + FO )<sup>r</sup></p>
-                                <p className="pt-1">( 1 + FO )<sup>r</sup> - 1</p>
-                            </div>
-                        </div>
-                        <ul className="pl-3">
-                            <li><strong>Anapara (A):</strong> Alınan kredi miktarı</li>
-                            <li><strong>Faiz Oranı (FO):</strong> Aylık faiz oranı (yıllık oranın 12'ye bölünmüş hali)</li>
-                            <li><strong>Vade (r):</strong> Kredi süresi (ay cinsinden)</li>
-                        </ul><br/>
-                        <h4>Örnek:</h4>
-                        <p>10.000 TL kredi, aylık %1,5 faiz ve 12 ay vade:</p>
-                        <div className="flex flex-col lg:flex-row justify-center lg:items-center py-7">
-                            <p>Taksit = </p>
-                            <div className="flex flex-col justify-center items-center px-1">
-                                <p className="border-b-2">10.000 x 0.015 x (1 + 0.015)<sup>12</sup></p>
-                                <p className="pt-1">(1 + 0.015)<sup>12</sup> - 1</p>
-                            </div>
-                            <p>= 899₺</p>
-                        </div>
-                        <h3 className="text-xl">2. Azalan Bakiyeli Kredi (Değişken Taksit)</h3>
-                        <p>Faiz, kalan anapara üzerinden hesaplanır. İlk taksitler yüksek, sonra düşük olur.</p><br/>
-                        <h4 className="text-xl">Örnek:</h4>
-                        <p>10.000 TL kredi, aylık %1,5 faiz ve 12 ay vade:</p>
-                        <p>İlk ay:</p>
-                        <ul className="pl-3">
-                            <li><strong>Faiz:</strong> 10.000 x 0.015 = 150₺</li>
-                            <li><strong>Ana Para Taksidi:</strong> 10.000 / 12 = 833.33₺</li>
-                            <li><strong>Toplam:</strong> 983.33₺</li>
-                        </ul>
-                        <p>Sonraki aylar faiz azalan anapara üzerinden hesaplanır.</p>
-                </div>
+
+          <div className="credit-content flex flex-col gap-3">
+            <h2 className="text-2xl">Kredi Hesaplama Nedir?</h2>
+            <p>
+              Kredi hesaplama, alınan kredinin faiz oranı ve geri ödeme süresine göre aylık
+              taksitlerin belirlenmesidir. İki temel yöntem kullanılır:
+            </p>
+
+            <h3 className="text-xl">1. Sabit (Eşit) Taksitli Kredi</h3>
+            <p>Her ay eşit miktarda ödeme yapılır.</p>
+            <h4 className="text-lg">Formül</h4>
+            <div className="flex justify-center items-center py-3 overflow-x-auto">
+              <p className="pr-2">Taksit =</p>
+              <div className="flex flex-col items-center">
+                <p className="border-b-2 px-1">A × i × (1 + i)<sup>n</sup></p>
+                <p className="pt-1">(1 + i)<sup>n</sup> − 1</p>
+              </div>
+            </div>
+            <ul className="space-y-1">
+              <li><strong>A:</strong> Alınan kredi miktarı</li>
+              <li><strong>i:</strong> Aylık faiz oranı, ondalık hali (i = FO / 100)</li>
+              <li><strong>FO:</strong> Formda yazdığınız aylık faiz oranı (yüzde olarak, %1,5 ise 1.5)</li>
+              <li><strong>n:</strong> Vade (ay)</li>
+            </ul>
+            <p className="text-sm opacity-90">
+              Yıllık oranı biliyorsanız 12'ye bölerek aylık orana çevirin.
+            </p>
+            <h4 className="text-lg">Örnek</h4>
+            <p>10.000 TL kredi, aylık %1,5 faiz (forma <strong>1.5</strong> yazın), 12 ay vade:</p>
+            <p>i = 1,5 / 100 = 0,015</p>
+            <p className="font-semibold">
+              Taksit ≈ 916,80 ₺ (toplam geri ödeme ≈ 11.001,60 ₺, toplam faiz ≈ 1.001,60 ₺)
+            </p>
+
+            <h3 className="text-xl">2. Azalan Bakiyeli Kredi</h3>
+            <p>
+              Anapara her ay eşit bölünür, faiz kalan anapara üzerinden hesaplanır. İlk taksitler
+              yüksek, sonrakiler düşük olur.
+            </p>
+            <ul className="space-y-1">
+              <li><strong>Anapara payı:</strong> A / n</li>
+              <li><strong>Faiz:</strong> Kalan anapara × (FO / 100)</li>
+              <li><strong>Taksit:</strong> Anapara payı + Faiz</li>
+            </ul>
+            <h4 className="text-lg">Örnek</h4>
+            <p>10.000 TL kredi, aylık %1,5 faiz, 12 ay vade:</p>
+            <ul className="space-y-1">
+              <li><strong>1. ay:</strong> Faiz 10.000 × 0,015 = 150 ₺, anapara payı 10.000 / 12 = 833,33 ₺, taksit 983,33 ₺</li>
+              <li><strong>12. ay:</strong> Faiz 833,33 × 0,015 = 12,50 ₺, taksit 845,83 ₺</li>
+              <li><strong>Toplam faiz:</strong> 975 ₺ (sabit taksitte 1.001,60 ₺)</li>
+            </ul>
+            <p className="text-sm opacity-90">
+              Gerçek kredilerde bazı türlerde vergi (KKDF/BSMV) ve masraflar eklenebilir; sonuçlar
+              bilgilendirme amaçlıdır.
+            </p>
+          </div>
         </div>
       </div>
       <Footer />
