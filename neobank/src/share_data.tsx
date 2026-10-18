@@ -98,7 +98,7 @@ interface ShareData {
       input3: {
         key: "maliyet_input3",
         type: "islemUcreti",
-        holder: "İşlem ücreti (varsa)",
+        holder: "İşlem ücreti (boş bırakılabilir)",
       },
     },
     deger: {
@@ -109,13 +109,13 @@ interface ShareData {
       },
       input2: {
         key: "deger_input2",
-        type: "güncelFiyat",
-        holder: "Günce hisse fiyatı",
+        type: "guncelFiyat",
+        holder: "Güncel hisse fiyatı",
       },
       input3: {
         key: "deger_input3",
         type: "nakit",
-        holder: "Nakit",
+        holder: "Nakit (boş bırakılabilir)",
       },
     },
     kar: {
@@ -137,7 +137,7 @@ interface ShareData {
       input4: {
         key: "kar_input4",
         type: "islemTutari",
-        holder: "İşlem ücretleri (varsa)",
+        holder: "İşlem ücretleri (boş bırakılabilir)",
       },
     },
     year: {

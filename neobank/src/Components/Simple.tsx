@@ -1,100 +1,127 @@
-import { useNavigate } from "react-router";
-import { Footer } from "../Layers/Footer"
-import { Header } from "../Layers/Header"
-import { useForm } from "react-hook-form"
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { Header } from "../Layers/Header";
+import { Footer } from "../Layers/Footer";
+import { Field } from "../Layers/Field";
+import { formatTL, simpleInterest } from "../utils/finance";
+import { numberRules } from "../utils/rules";
 
-type Inputs = {
-  money: string
-  rate: string
-  time: string
-}
+type Inputs = { money: number; rate: number; time: number };
+type Result = { interest: number; total: number };
 
 export const Simple = () => {
+  const navigate = useNavigate();
+  const onClick = (url: string): void => {
+    void navigate(url);
+  };
+  const [result, setResult] = useState<Result | null>(null);
 
-    const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<Inputs>();
 
-    const {
-      register,
-      handleSubmit, // handleSubmit'i buraya ekliyoruz
-      reset,
-      formState: { errors },
-    } = useForm<Inputs>();
+  const hesapla = ({ money, rate, time }: Inputs): void => {
+    const interest = simpleInterest(money, rate, time);
+    setResult({ interest, total: money + interest });
+  };
 
-    const [result, setResult] = useState<number | null>();
-
-    function onClick(url: string): void {
-      navigate(url);
-    }
-
-    // Formun submit fonksiyonu
-    const hesapla = (data: Inputs) => {
-      const money = parseFloat(data.money);
-      const rate = parseFloat(data.rate);
-      const time = parseFloat(data.time);
-
-      const interest = money * rate * time;
-      setResult(interest);
-    }
-
-    const sifirla = () => {
-      reset();
-      setResult(null); // Sonucu sıfırlıyoruz
-    }
+  const sifirla = (): void => {
+    reset();
+    setResult(null);
+  };
 
   return (
     <>
-        <div className="w-full h-full flex flex-col items-center">
-            <Header onClick={onClick}/>
-            <div className="w-4/5 h-3/5 grid lg:grid-cols-2 grid-cols-1 gap-6 lg:my-8">
-                <div className="simple-content flex flex-col items-center justify-center py-7">
-                <form className="flex flex-col gap-4 w-3/5 items-center justify-center" onSubmit={handleSubmit(hesapla)}>
-                  <label className="w-full" htmlFor="mainMoney">Ana Para:</label>
-                  <input className="simple-input" type="number" id="mainMoney" placeholder="Ana Para" {...register("money", {required: "Bu alan gereklidir!"})} />
-                  {errors.money && <span>{errors.money.message}</span>}
+      <div className="w-full flex flex-col items-center">
+        <Header onClick={onClick} />
+        <div className="calc-grid">
+          <div className="simple-content flex flex-col items-center gap-6">
+            <form
+              className="flex flex-col gap-4 w-full max-w-md"
+              onSubmit={handleSubmit(hesapla)}
+              noValidate
+            >
+              <Field label="Ana Para (₺)" htmlFor="money" error={errors.money?.message}>
+                <input
+                  id="money"
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  className="calc-input"
+                  placeholder="Örn: 10000"
+                  {...register("money", numberRules(0.01))}
+                />
+              </Field>
 
-                  <label className="w-full" htmlFor="rate">Faiz Oranı:</label>
-                  <input className="simple-input" type="number" id="rate" step="0.0001" placeholder="Oran (%15 ise 0.15)" {...register("rate", { required: "Bu alan gereklidir!" })} />
-                  {errors.rate && <span>{errors.rate.message}</span>}
+              <Field label="Yıllık Faiz Oranı (%)" htmlFor="rate" error={errors.rate?.message}>
+                <input
+                  id="rate"
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  className="calc-input"
+                  placeholder="Örn: 5"
+                  {...register("rate", numberRules(0))}
+                />
+              </Field>
 
-                  <label className="w-full" htmlFor="time">Faiz Süresi (Yıl):</label>
-                  <input className="simple-input" type="number" id="time" placeholder="Süre (Yıl)" {...register("time", {required: "Bu alan gereklidir!"})}></input>
-                  {errors.time && <span>{errors.time.message}</span>}
+              <Field label="Süre (Yıl)" htmlFor="time" error={errors.time?.message}>
+                <input
+                  id="time"
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  className="calc-input"
+                  placeholder="Örn: 3"
+                  {...register("time", numberRules(0.01))}
+                />
+              </Field>
 
-                  <div className="flex w-full justify-between">
-                    <button className="bg-blue-500 text-white px-2 lg:px-4 py-2 rounded hover:bg-blue-600 transition" type="submit">Hesapla</button>
-                    <button className="bg-gray-500 text-white px-2 lg:px-4 py-2 rounded hover:bg-blue-600 transition" type="button" onClick={sifirla}>Sıfırla</button>
-                  </div>
-                </form>
-                <div className="py-5 flex flex-col gap-3">
-                  <h3>Hesaplanan Faiz Miktarı:</h3>
-                  <p className="flex justify-center">{result == null ? "Henüz işlem yapılmadı!!" : `${result?.toFixed(2)} ₺`}</p>
-                </div>
-                </div>
-                <div className="simple-content p-10 flex flex-col justify-center">
-                  <h2 className="text-2xl">Basit Faiz Nedir?</h2>
-                  <p className="pl-3">Basit faiz, bir ana para üzerinden belirli bir süre ve faiz oranı ile kazanç veya borç maliyetinin hesaplanması yöntemidir.</p><br/>
-                  
-                  <h3 className="text-xl">Basit Faiz Hesaplama Formülü:</h3>
-                  <p className="pl-3">Basit faiz şu formül ile hesaplanır:</p><br/>
-                  <div className="flex justify-center items-center">
-                    <p className="text-lg font-semibold">F = A × r × t</p>
-                  </div>
-                  <br />
-                  <ul>
-                    <li><strong className="pl-3">F:</strong> Hesaplanan faiz miktarı</li>
-                    <li><strong className="pl-3">A:</strong> Ana para (başlangıçtaki miktar)</li>
-                    <li><strong className="pl-3">r:</strong> Faiz oranı (yüzde olarak belirtilen oran, ondalık forma dönüştürülmeli; örneğin, %5 → 0.05)</li>
-                    <li><strong className="pl-3">t:</strong> Zaman (yıl bazında ifade edilir)</li>
-                  </ul><br/>
-                  
-                  <h3 className="text-xl">Örnek Hesaplama:</h3>
-                  <p className="pl-3">Bir kişi, 10.000 TL tutarındaki bir parayı %5 yıllık faiz oranıyla 3 yıl boyunca yatırırsa, hesaplama şu şekilde yapılır:</p>
-                  <p className="pl-3"><em>F = 10.000 × 0.05 × 3 = 1.500 TL</em></p>
-                </div>
+              <div className="flex w-full justify-between">
+                <button className="btn-primary" type="submit">Hesapla</button>
+                <button className="btn-secondary" type="button" onClick={sifirla}>Sıfırla</button>
+              </div>
+            </form>
+
+            <div className="result-box" aria-live="polite">
+              {result ? (
+                <>
+                  <p>Faiz Tutarı: <strong>{formatTL(result.interest)}</strong></p>
+                  <p>Vade Sonu Toplam: <strong>{formatTL(result.total)}</strong></p>
+                </>
+              ) : (
+                <p>Henüz işlem yapılmadı!</p>
+              )}
             </div>
+          </div>
+
+          <div className="simple-content flex flex-col justify-center gap-3">
+            <h2 className="text-2xl">Basit Faiz Nedir?</h2>
+            <p>
+              Basit faiz, bir ana para üzerinden belirli bir süre ve faiz oranı ile kazanç veya borç
+              maliyetinin hesaplanması yöntemidir. Faiz her dönem yalnızca ana para üzerinden işler.
+            </p>
+
+            <h3 className="text-xl">Hesaplama Formülü</h3>
+            <p className="text-lg font-semibold text-center">F = A × (r / 100) × t</p>
+            <ul className="space-y-1">
+              <li><strong>F:</strong> Hesaplanan faiz miktarı</li>
+              <li><strong>A:</strong> Ana para (başlangıçtaki miktar)</li>
+              <li><strong>r:</strong> Yıllık faiz oranı (yüzde olarak, %5 ise 5 yazılır)</li>
+              <li><strong>t:</strong> Süre (yıl)</li>
+            </ul>
+
+            <h3 className="text-xl">Örnek</h3>
+            <p>10.000 TL, yıllık %5 faiz (forma <strong>5</strong> yazın), 3 yıl:</p>
+            <p><em>F = 10.000 × (5 / 100) × 3 = 1.500 TL</em></p>
+          </div>
         </div>
-        <Footer/>
+      </div>
+      <Footer />
     </>
-  )
-}
+  );
+};

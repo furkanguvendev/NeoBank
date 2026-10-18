@@ -23,7 +23,7 @@ export const ExperienceTimeline = () => {
             <div className="absolute left-4 top-0 h-full w-0.5 bg-gray-200"></div>
             {experiences.map((exp, index) => (
                 <div key={index} className="ml-12 mb-8 relative">
-                    <div className="absolute -left-12 mt-2 w-4 h-4 rounded-full bg-blue-500"></div>
+                    <div className="absolute left-[7px] top-0 h-full w-0.5 bg-gray-200"></div>
                     <div className="bg-white rounded-lg shadow-md p-4">
                         <span className="text-blue-500 font-semibold">{exp.year}</span>
                         <h3 className="text-lg font-semibold mt-1">{exp.title}</h3>
